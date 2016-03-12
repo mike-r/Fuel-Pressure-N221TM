@@ -1,24 +1,18 @@
 #include <SoftwareSerial.h>
 
 /*
-  Analog input, analog output, serial output
-
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
  Also prints the results to the serial monitor.
 
  The circuit:
- * Garmin Fuel Pressure sensor connected to analog pin 0.
+   Garmin Fuel Pressure sensor connected to analog pin 0.
    Sensor ouputs 0.5 volts at 0.0 PSIG and 4.5 volts at 15.0 PSIG.
    Output is divided using 2K fixed resistor and a 200K 20-turn pot.
- * 
-
+ 
  created 29 Dec. 2008
- modified 9 Apr 2012
- by Tom Igoe
-
+ modified 9 Apr 2012 by Tom Igoe
  modified for N221TM in January 2016 by Mike Rehberg
-
  */
 
 // These constants won't change.  They're used to give names
@@ -95,7 +89,6 @@ void loop() {
   Serial.print(psig);
   Serial.println(" PSIG");
   
-
   // print the results to the LCD display:
   mySerial.print("?x00?y2");   // cursor to first character of line 2
   mySerial.println("Fuel Pressure:      "); 
