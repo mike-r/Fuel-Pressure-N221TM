@@ -37,7 +37,7 @@ char  incomingByte;         // BAUD conversion buffer
 #define txPinLCD 15   //  txpinLCD for Serial 4x20 LCD Display using Analog(1)
 
 #define rxPinAP1 3    //  rxPinAP1 is immaterial - not used - just make this an unused Arduino pin number
-#define txPinAP1 16   //  txpinAP1 for Serial 4x20 LCD Display using Analog(2)
+#define txPinAP1 16   //  txpinAP1 for output to SmartGPS using Analog(2)
 
 SoftwareSerial mySerial =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial =  SoftwareSerial(rxPinAP1, txPinAP1);
@@ -56,7 +56,7 @@ void setup() {
   mySerial.begin(9600);      // 9600 baud is chip comm speed
 
   pinMode(txPinAP1, OUTPUT); // Serial output to NavAid AP-1 Autopilot
-  ap1Serial.begin(4800);      // 4800 baud is chip comm speed
+  ap1Serial.begin(9600);      // 4800 baud is chip comm speed
   
   mySerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
   delay(500);                // pause to allow LCD EEPROM to program
@@ -91,7 +91,10 @@ void loop() {
   outputValue = map(sensorValue, 0, 818, 0, 255);  // 
   if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
   analogWrite(analogOutPin, outputValue);          // Set the analog out value:
-  temp = outputValue;        // prepare for float math
+
+// Uncomment this last block to enable debug messaged to the LCD and monitor.
+
+/*  temp = outputValue;        // prepare for float math
   psig = temp/scaleFactor;   // Convert to PSIG
   temp = rawSensorValue;     // prepare for float math
   inputVoltage = temp/resolution;    // assuming 4.96vdc supply/reference
@@ -125,4 +128,5 @@ void loop() {
   // after the last reading:
   delay(2);
   delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
+*/
 }
