@@ -36,11 +36,15 @@ char  incomingByte;         // BAUD conversion buffer
 #define rxPinLCD 2    //  rxPinLCD is immaterial - not used - just make this an unused Arduino pin number
 #define txPinLCD 15   //  txpinLCD for Serial 4x20 LCD Display using Analog(1)
 
-#define rxPinAP1 3    //  rxPinAP1 is immaterial - not used - just make this an unused Arduino pin number
+#define rxPinAP1 5    //  rxPinAP1 is immaterial - not used - just make this an unused Arduino pin number
 #define txPinAP1 16   //  txpinAP1 for output to SmartGPS using Analog(2)
+
+#define rxPinG496 4   // rxPinG496 is the 9600 BAUD serial output from the G496
+#define txPinG496 17  // txPinG496 is not used but would be Analog(3)
 
 SoftwareSerial mySerial =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial =  SoftwareSerial(rxPinAP1, txPinAP1);
+SoftwareSerial g496Serial = SoftwareSerial (rxPinG496, txPinG496);
 
 int rawSensorValue = 0;     // value read from the Garmin Sensor
 int sensorValue;
@@ -48,15 +52,19 @@ int outputValue = 0;        // value output to the PWM (analog out)
 
 void setup() {
   pinMode(analogOutPin, OUTPUT);
-  
+
+    
   // initialize serial communications at 9600 bps:
   Serial.begin(9600);       // Diagnostics serial to PC running Arduino application and G496 NMEA/COM
 
   pinMode(txPinLCD, OUTPUT); // Serial output to 4/20 character LCD display
   mySerial.begin(9600);      // 9600 baud is chip comm speed
 
-  pinMode(txPinAP1, OUTPUT); // Serial output to NavAid AP-1 Autopilot
-  ap1Serial.begin(9600);      // 4800 baud is chip comm speed
+  pinMode(txPinAP1, OUTPUT);  // Serial output to NavAid AP-1 Autopilot
+  ap1Serial.begin(4800);      // 4800 baud is chip comm speed
+
+  pinMode(rxPinG496, INPUT);  // Serial input from G496
+  g496Serial.begin(9600);     // 9600 BAUD is the com speed of the G496
   
   mySerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
   delay(500);                // pause to allow LCD EEPROM to program
@@ -77,8 +85,10 @@ void setup() {
 
 void loop() {
 
-  if(Serial.available() > 0) {
-    incomingByte = Serial.read();
+//  if(Serial.available() > 0) {
+//    incomingByte = Serial.read();
+    if(g496Serial.available() >0) {
+      incomingByte = g496Serial.read();
     ap1Serial.print(incomingByte);
   }
 
@@ -93,6 +103,7 @@ void loop() {
   analogWrite(analogOutPin, outputValue);          // Set the analog out value:
 
 // Uncomment this last block to enable debug messaged to the LCD and monitor.
+// +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
 
 /*  temp = outputValue;        // prepare for float math
   psig = temp/scaleFactor;   // Convert to PSIG
@@ -129,4 +140,6 @@ void loop() {
   delay(2);
   delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
 */
+// +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
+
 }
