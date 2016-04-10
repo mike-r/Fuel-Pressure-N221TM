@@ -42,8 +42,8 @@ char  incomingByte;         // BAUD conversion buffer
 #define rxPinG496 4   // rxPinG496 is the 9600 BAUD serial output from the G496
 #define txPinG496 17  // txPinG496 is not used but would be Analog(3)
 
-SoftwareSerial mySerial =  SoftwareSerial(rxPinLCD, txPinLCD);
-SoftwareSerial ap1Serial =  SoftwareSerial(rxPinAP1, txPinAP1);
+SoftwareSerial mySerial   =  SoftwareSerial(rxPinLCD, txPinLCD);
+SoftwareSerial ap1Serial  =  SoftwareSerial(rxPinAP1, txPinAP1);
 SoftwareSerial g496Serial = SoftwareSerial (rxPinG496, txPinG496);
 
 int rawSensorValue = 0;     // value read from the Garmin Sensor
@@ -78,8 +78,12 @@ void setup() {
   delay(1000);
   mySerial.print("?x00?y0");   // cursor to first character of line 0
   mySerial.println("       N221TM       ");
+  mySerial.print("?x00?y1");   // cursor to first character of line 1
+  mySerial.println(" BareBones  Arduino  ");
   mySerial.print("?x00?y2");   // cursor to first character of line 2
-  mySerial.println("    Fuel Pressure   ");
+  mySerial.println(" Fuel Pressure and  ");
+  mySerial.print("?x00?y3");   // cursor to first character of line 3
+  mySerial.println(" G496 to A/P Buffer ");
   delay(2000);                 // Wait to read it.
 }
 
