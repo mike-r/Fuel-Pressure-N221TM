@@ -1,6 +1,9 @@
 #include <SoftwareSerial.h>
 
 /*
+ * 
+ *          **********  Version 2.0 **********
+ *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
  Also prints the results to the serial monitor.
@@ -17,6 +20,9 @@
  modiified March 2016 by Mike Rehberg:  Added Serial BAUD rate converter.  Garmin G496 outputs NMEA
                                         and Garmin COM data at 9600 BAUD.  Trio AP-1 autopilot can
                                         only read NMEA-0183 data at 4800 BAUD.
+
+                                        Moved 9600 receive port to hardware serial port (D0).  It dropped
+                                        bytes on the Software Serial port
  */
 
 // These constants won't change.  They're used to give names
@@ -89,11 +95,11 @@ void setup() {
 
 void loop() {
 
-//  if(Serial.available() > 0) {
-//    incomingByte = Serial.read();
-    if(g496Serial.available() >0) {
-      incomingByte = g496Serial.read();
-    ap1Serial.print(incomingByte);
+  if(Serial.available() > 0) {               // Read GPS data at 9600 BAUD into the Hardware Serial Port
+    incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
+//    if(g496Serial.available() >0) {        // Same as above but using Software Serial port
+//      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout
+    ap1Serial.print(incomingByte);          // Write to the A/P at 4800 BAUD
   }
 
   // read the analog in value:
