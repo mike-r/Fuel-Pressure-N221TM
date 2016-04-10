@@ -1,6 +1,9 @@
 #include <SoftwareSerial.h>
 
 /*
+ * 
+ *                 ***** DEBUG *******
+ *                 
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
  Also prints the results to the serial monitor.
@@ -89,10 +92,10 @@ void setup() {
 
 void loop() {
 
-//  if(Serial.available() > 0) {
-//    incomingByte = Serial.read();
-    if(g496Serial.available() >0) {
-      incomingByte = g496Serial.read();
+  if(Serial.available() > 0) {         //  Use the hardware serial port so we don't drop bytes
+    incomingByte = Serial.read();
+//    if(g496Serial.available() >0) {  // Try using a software serial port...
+//      incomingByte = g496Serial.read();
     ap1Serial.print(incomingByte);
   }
 
