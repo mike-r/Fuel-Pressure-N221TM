@@ -98,7 +98,7 @@ void loop() {
   if(Serial.available() > 0) {               // Read GPS data at 9600 BAUD into the Hardware Serial Port
     incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
 //    if(g496Serial.available() >0) {        // Same as above but using Software Serial port
-//      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout
+//      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout   
     ap1Serial.print(incomingByte);          // Write to the A/P at 4800 BAUD
   }
 
