@@ -48,9 +48,9 @@ char  incomingByte;         // BAUD conversion buffer
 #define rxPinG496 4   // rxPinG496 is the 9600 BAUD serial output from the G496
 #define txPinG496 17  // txPinG496 is not used but would be Analog(3)
 
-SoftwareSerial mySerial   =  SoftwareSerial(rxPinLCD, txPinLCD);
+SoftwareSerial lcdSerial  =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial  =  SoftwareSerial(rxPinAP1, txPinAP1);
-SoftwareSerial g496Serial = SoftwareSerial (rxPinG496, txPinG496);
+SoftwareSerial g496Serial =  SoftwareSerial(rxPinG496, txPinG496);
 
 int rawSensorValue = 0;     // value read from the Garmin Sensor
 int sensorValue;
@@ -61,10 +61,10 @@ void setup() {
 
     
   // initialize serial communications at 9600 bps:
-  Serial.begin(9600);       // Diagnostics serial to PC running Arduino application and G496 NMEA/COM
+  Serial.begin(9600);        // Diagnostics serial to PC running Arduino application and G496 NMEA/COM
 
   pinMode(txPinLCD, OUTPUT); // Serial output to 4/20 character LCD display
-  mySerial.begin(9600);      // 9600 baud is chip comm speed
+  lcdSerial.begin(9600);      // 9600 baud is chip comm speed
 
   pinMode(txPinAP1, OUTPUT);  // Serial output to NavAid AP-1 Autopilot
   ap1Serial.begin(4800);      // 4800 baud is chip comm speed
@@ -72,24 +72,24 @@ void setup() {
   pinMode(rxPinG496, INPUT);  // Serial input from G496
   g496Serial.begin(9600);     // 9600 BAUD is the com speed of the G496
   
-  mySerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
+  lcdSerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
   delay(500);                // pause to allow LCD EEPROM to program
-  mySerial.print("?Bff");    // set backlight to ff hex, maximum brightness
+  lcdSerial.print("?Bff");    // set backlight to ff hex, maximum brightness
   delay(1000);               // pause to allow LCD EEPROM to program
-  mySerial.print("?s6");     // set tabs to six spaces
+  lcdSerial.print("?s6");     // set tabs to six spaces
   delay(1000);               // pause to allow LCD EEPROM to program
-  mySerial.print("?c0");     // turn cursor off
+  lcdSerial.print("?c0");     // turn cursor off
   delay(300);
-  mySerial.print("?f");      // clear the LCD
+  lcdSerial.print("?f");      // clear the LCD
   delay(1000);
-  mySerial.print("?x00?y0");   // cursor to first character of line 0
-  mySerial.println("       N221TM       ");
-  mySerial.print("?x00?y1");   // cursor to first character of line 1
-  mySerial.println(" BareBones  Arduino  ");
-  mySerial.print("?x00?y2");   // cursor to first character of line 2
-  mySerial.println(" Fuel Pressure and  ");
-  mySerial.print("?x00?y3");   // cursor to first character of line 3
-  mySerial.println(" G496 to A/P Buffer ");
+  lcdSerial.print("?x00?y0");   // cursor to first character of line 0
+  lcdSerial.println("       N221TM       ");
+  lcdSerial.print("?x00?y1");   // cursor to first character of line 1
+  lcdSerial.println(" BareBones  Arduino  ");
+  lcdSerial.print("?x00?y2");   // cursor to first character of line 2
+  lcdSerial.println(" Fuel Pressure and  ");
+  lcdSerial.print("?x00?y3");   // cursor to first character of line 3
+  lcdSerial.println(" G496 to A/P Buffer ");
   delay(2000);                 // Wait to read it.
 }
 
@@ -102,7 +102,7 @@ void loop() {
     ap1Serial.print(incomingByte);          // Write to the A/P at 4800 BAUD
   }
 
-  // read the analog in value:
+  // read the analog fuel pressure in value:
   rawSensorValue = analogRead(analogInPin);
   sensorValue = rawSensorValue - garminOffset;  // Remove the 0.5V offset
   if (sensorValue <= 0) sensorValue = 0;        // No negative Fuel Pressure
@@ -115,7 +115,7 @@ void loop() {
 // Uncomment this last block to enable debug messaged to the LCD and monitor.
 // +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
 
-/*  temp = outputValue;        // prepare for float math
+  temp = outputValue;        // prepare for float math
   psig = temp/scaleFactor;   // Convert to PSIG
   temp = rawSensorValue;     // prepare for float math
   inputVoltage = temp/resolution;    // assuming 4.96vdc supply/reference
@@ -135,21 +135,21 @@ void loop() {
   Serial.println(" PSIG");
   
   // print the results to the LCD display:
-  mySerial.print("?x00?y2");   // cursor to first character of line 2
-  mySerial.println("Fuel Pressure:      "); 
-  mySerial.print("?x15?y2");   // cursor to 15th character of line 2
-  mySerial.print(psig, 1);
-  mySerial.print("?x00?y3");   // cursor to first character of line 3
-  mySerial.println("Voltage In:      "); 
-  mySerial.print("?x15?y3");   // cursor to 15th character of line 3
-  mySerial.print(inputVoltage, 2);
+  lcdSerial.print("?x00?y2");   // cursor to first character of line 2
+  lcdSerial.println("Fuel Pressure:      "); 
+  lcdSerial.print("?x15?y2");   // cursor to 15th character of line 2
+  lcdSerial.print(psig, 1);
+  lcdSerial.print("?x00?y3");   // cursor to first character of line 3
+  lcdSerial.println("Voltage In:      "); 
+  lcdSerial.print("?x15?y3");   // cursor to 15th character of line 3
+  lcdSerial.print(inputVoltage, 2);
   
   // wait 2 milliseconds before the next loop
   // for the analog-to-digital converter to settle
   // after the last reading:
   delay(2);
   delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
-*/
+
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
 
 }
