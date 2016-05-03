@@ -1,3 +1,4 @@
+#include <MicroNMEA.h>
 #include <SoftwareSerial.h>
 
 /*
@@ -22,7 +23,11 @@
                                         only read NMEA-0183 data at 4800 BAUD.
 
                                         Moved 9600 receive port to hardware serial port (D0).  It dropped
-                                        bytes on the Software Serial port
+                                        bytes on the Software Serial port.
+
+                                        Note that these are RS-232 level signels and as such need a
+                                        TTL to RS-232 level shifter to interface with the Arduino.
+                                        
  */
 
 // These constants won't change.  They're used to give names
@@ -45,8 +50,8 @@ char  incomingByte;         // BAUD conversion buffer
 #define rxPinAP1 5    //  rxPinAP1 is immaterial - not used - just make this an unused Arduino pin number
 #define txPinAP1 16   //  txpinAP1 for output to SmartGPS using Analog(2)
 
-#define rxPinG496 4   // rxPinG496 is the 9600 BAUD serial output from the G496
-#define txPinG496 17  // txPinG496 is not used but would be Analog(3)
+#define rxPinG496 4   //  rxPinG496 is the 9600 BAUD serial output from the G496
+#define txPinG496 17  //  txPinG496 is not used but would be Analog(3)
 
 SoftwareSerial lcdSerial  =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial  =  SoftwareSerial(rxPinAP1, txPinAP1);
@@ -99,7 +104,7 @@ void loop() {
     incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
 //    if(g496Serial.available() >0) {        // Same as above but using Software Serial port
 //      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout   
-    ap1Serial.print(incomingByte);          // Write to the A/P at 4800 BAUD
+    ap1Serial.print(incomingByte);           // Write to the A/P at 4800 BAUD
   }
 
   // read the analog fuel pressure in value:
@@ -112,9 +117,9 @@ void loop() {
   if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
   analogWrite(analogOutPin, outputValue);          // Set the analog out value:
 
-// Uncomment this last block to enable debug messaged to the LCD and monitor.
+// Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
 // +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
-
+/*
   temp = outputValue;        // prepare for float math
   psig = temp/scaleFactor;   // Convert to PSIG
   temp = rawSensorValue;     // prepare for float math
@@ -148,6 +153,7 @@ void loop() {
   // for the analog-to-digital converter to settle
   // after the last reading:
   delay(2);
+  */
   delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
 
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
