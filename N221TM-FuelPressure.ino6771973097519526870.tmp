@@ -110,18 +110,17 @@ void loop() {
 //      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout
     if (incomingByte != '\n') {              // Look for NewLine terminator
       if (incomingByte == '$') {             // Begining of NEMA string
-        g496String = "";                     // Clear string buffer
+        incomingByte = "";                  // Clear string buffer
       }
-      g496String += incomingByte;            // Move character into next open space in string
+      g496String += incomingByte;
     }
     else {
-      if (g496String.charAt(1) =='G') {     // Check to see if this is a NMEA string
-        ap1Serial.println(g496String);      // Write NEMA string to the AutoPilot at 4800
-        lcdSerial.print("?x00?y0");         // cursor to first character of line 0
-        lcdSerial.print(g496String);        // write string to the LCD
+      if (g496String.charAt(0) =='$' {
+        ap1Serial.println(g496String);
       }
       g496String = "";
     }
+ //   ap1Serial.print(incomingByte);           // Write to the A/P at 4800 BAUD
   }
 
   // read the analog fuel pressure in value:
@@ -169,10 +168,9 @@ void loop() {
   // wait 2 milliseconds before the next loop
   // for the analog-to-digital converter to settle
   // after the last reading:
-
-  */
   delay(2);
-  //delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
+  */
+  delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
 
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
 
