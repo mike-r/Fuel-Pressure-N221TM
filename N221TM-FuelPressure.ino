@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.1 **********
+ *          **********  Version 2.2 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -28,7 +28,8 @@
                                         Note that these are RS-232 level signels and as such need a
                                         TTL to RS-232 level shifter to interface with the Arduino.
                                         
- modified May 2016 by Mike Rehberg:     Added NMEA string code
+ modified May 2016 by Mike Rehberg:     Added NMEA string code to read from G-496 at 9600 into the HW
+                                        serial port and write out only NMEA code at 4800 to the Autopilot
                                         
  */
 
@@ -52,14 +53,11 @@ String g496String ="";      // String read in from G496
 #define txPinLCD 15   //  txpinLCD for Serial 4x20 LCD Display using Analog(1)
 
 #define rxPinAP1 5    //  rxPinAP1 is immaterial - not used - just make this an unused Arduino pin number
-#define txPinAP1 16   //  txpinAP1 for output to SmartGPS using Analog(2)
+#define txPinAP1 4    //  txpinAP1 for output to SmartGPS using Digital(4)
 
-#define rxPinG496 4   //  rxPinG496 is the 9600 BAUD serial output from the G496
-#define txPinG496 17  //  txPinG496 is not used but would be Analog(3)
 
 SoftwareSerial lcdSerial  =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial  =  SoftwareSerial(rxPinAP1, txPinAP1);
-SoftwareSerial g496Serial =  SoftwareSerial(rxPinG496, txPinG496);
 
 int rawSensorValue = 0;     // value read from the Garmin Sensor
 int sensorValue;
@@ -70,16 +68,13 @@ void setup() {
 
     
   // initialize serial communications at 9600 bps:
-  Serial.begin(9600);        // Diagnostics serial to PC running Arduino application and G496 NMEA/COM
+  Serial.begin(9600);        // Harware Serail port to read NMEA and COM data from G-496
 
   pinMode(txPinLCD, OUTPUT); // Serial output to 4/20 character LCD display
   lcdSerial.begin(9600);      // 9600 baud is chip comm speed
 
   pinMode(txPinAP1, OUTPUT);  // Serial output to NavAid AP-1 Autopilot
   ap1Serial.begin(4800);      // 4800 baud is chip comm speed
-
-  pinMode(rxPinG496, INPUT);  // Serial input from G496
-  g496Serial.begin(9600);     // 9600 BAUD is the com speed of the G496
   
   lcdSerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
   delay(500);                // pause to allow LCD EEPROM to program
@@ -100,23 +95,23 @@ void setup() {
   lcdSerial.print("?x00?y3");   // cursor to first character of line 3
   lcdSerial.println(" G496 to A/P Buffer ");
   delay(2000);                 // Wait to read it.
+  lcdSerial.print("?f");       // clear the LCD
+  delay(1000);
 }
 
 void loop() {
 
   if(Serial.available() > 0) {               // Read GPS data at 9600 BAUD into the Hardware Serial Port
     incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
-//    if(g496Serial.available() >0) {        // Same as above but using Software Serial port
-//      incomingByte = g496Serial.read();    // Didn't work so this code and init for it should be cutout
     if (incomingByte != '\n') {              // Look for NewLine terminator
-      if (incomingByte == '$') {             // Begining of NEMA string
+      if (incomingByte == '$') {             // Begining of NMEA string
         g496String = "";                     // Clear string buffer
       }
       g496String += incomingByte;            // Move character into next open space in string
     }
     else {
       if (g496String.charAt(1) =='G') {     // Check to see if this is a NMEA string
-        ap1Serial.println(g496String);      // Write NEMA string to the AutoPilot at 4800
+        ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
         lcdSerial.print("?x00?y0");         // cursor to first character of line 0
         lcdSerial.print(g496String);        // write string to the LCD
       }
@@ -166,14 +161,15 @@ void loop() {
   lcdSerial.print("?x15?y3");   // cursor to 15th character of line 3
   lcdSerial.print(inputVoltage, 2);
   
+  delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
+
+// +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
+*/
+
   // wait 2 milliseconds before the next loop
   // for the analog-to-digital converter to settle
   // after the last reading:
 
-  */
   delay(2);
-  //delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
-
-// +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
 
 }
