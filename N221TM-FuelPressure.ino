@@ -46,7 +46,9 @@ float resolution=206.25;    // Input steps per Volt  1023/4.96
 float scaleFactor=17.0;     // Output steps per PSIG: 255/15
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
 char  incomingByte;         // BAUD conversion buffer
-String g496String ="";      // String read in from G496
+String g496String ="                                      ";      // String read in from G496
+int    countB =0;
+int    countC =0;
 
 
 #define rxPinLCD 2    //  rxPinLCD is immaterial - not used - just make this an unused Arduino pin number
@@ -110,10 +112,19 @@ void loop() {
       g496String += incomingByte;            // Move character into next open space in string
     }
     else {
-      if (g496String.charAt(5) =='B') {     // Check to see if this is a NMEA string
-        ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
-        lcdSerial.print("?x00?y0");         // cursor to first character of line 0
-        lcdSerial.print(g496String);        // write string to the LCD
+      if (g496String.substring(1, 6) == "GPRMB") {     // Check to see if this is a NMEA string
+        if (countB == 2) {
+          ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
+          countB = 0;
+        }
+        else countB = countB + 1;
+      }
+      else if (g496String.substring(1, 6) == "GPRMC") {
+        if (countC == 2) {
+          ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
+          countC = 0;
+        }
+        else countC = countC +1;       
       }
       g496String = "";
     }
