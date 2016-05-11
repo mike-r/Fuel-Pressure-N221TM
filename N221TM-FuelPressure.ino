@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.4 **********
+ *          **********  Version 2.5 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -18,7 +18,7 @@
  modified Januauary 2016 by Mike Rehberg: For N221TM Fuel Pressure transducer ouputs 0.5Vdc to 4.5Vdc
                                         while VM1000 is expecting 0 to 50mv.
                                         
- modiified March 2016 by Mike Rehberg:  Added Serial BAUD rate converter.  Garmin G496 outputs NMEA
+ V2.0 March 2016 by Mike Rehberg:       Added Serial BAUD rate converter.  Garmin G496 outputs NMEA
                                         and Garmin COM data at 9600 BAUD.  Trio AP-1 autopilot can
                                         only read NMEA-0183 data at 4800 BAUD.
 
@@ -28,11 +28,24 @@
                                         Note that these are RS-232 level signels and as such need a
                                         TTL to RS-232 level shifter to interface with the Arduino.
                                         
- modified May 2016 by Mike Rehberg:     Added NMEA string code to read from G-496 at 9600 into the HW
-                                        serial port and write out only NMEA code at 4800 to the Autopilot
+ V2.2 May 9, 2016 by Mike Rehberg:      Added NMEA string code to read from G-496 at 9600 into the HW
+                                        serial port and write out only NMEA code at 4800 to the Autopilot.
+                                        Moed Serial output to A/P from Analog-2 to Digital-4 to match HW in plane.
+                                        removed SoftwareSerial code for reading from G496.  HW reciever should
+                                        be better about not dropping characters
                                         
- May 11 2016 by Mike Rehberg:           Major Fixes
+   $GPRMB,A,0.66,R,KIKW,MTW,4407.71,N,08740.80,W,150.834,282.1,,V,D*2C
+   $GPRMC,211512,A,4339.15,N,08415.97,W,0.0,9.0,110516,6.8,W,D*10
+                                        
+ V 2.5 May 11 2016 by Mike Rehberg:     Reading G496 message stream at 9600 and only sending NMEA
+                                        $GPRMB and $GPRMC messeges to autopilot at 4800.  
+                                        will only send one message out of 2 or 3 which is about 1 per two sec.
 
+                                        Added a timer on the analog read/write of the fuel pressure sensor.
+                                        The VM1000 is slow anyway so no need to waste Arduino cycles.  Currently
+                                        set to update once every 2.925 seconds.
+
+ Things to add:                         + Hardware switch and code to enable debug to LCD display
  
  */
 
@@ -52,7 +65,9 @@ char  incomingByte;         // BAUD conversion buffer
 String g496String ="                                      ";      // String read in from G496
 int    countB =0;
 int    countC =0;
-
+unsigned long currentMillis =  0;   // How long the Arduino has been running (will loo in 50 days)
+unsigned long previousMillis = 0;   // The last time the Fuel Pressure was updated
+int           interval = 2925;      // Loop time for reading and writing the Fuel Pressure 
 
 #define rxPinLCD 2    //  rxPinLCD is immaterial - not used - just make this an unused Arduino pin number
 #define txPinLCD 15   //  txpinLCD for Serial 4x20 LCD Display using Analog(1)
@@ -92,7 +107,7 @@ void setup() {
   lcdSerial.print("?f");      // clear the LCD
   delay(1000);
   lcdSerial.print("?x00?y0");   // cursor to first character of line 0
-  lcdSerial.println("       N221TM       ");
+  lcdSerial.println("   N221TM   v 2.5   ");
   lcdSerial.print("?x00?y1");   // cursor to first character of line 1
   lcdSerial.println(" BareBones  Arduino  ");
   lcdSerial.print("?x00?y2");   // cursor to first character of line 2
@@ -134,14 +149,19 @@ void loop() {
   }
 
   // read the analog fuel pressure in value:
-  rawSensorValue = analogRead(analogInPin);
-  sensorValue = rawSensorValue - garminOffset;  // Remove the 0.5V offset
-  if (sensorValue <= 0) sensorValue = 0;        // No negative Fuel Pressure
+
+  currentMillis = millis();                     // How long has it been since last booted?
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;               // Reset the timer
+    rawSensorValue = analogRead(analogInPin);     // Read voltage from Garmin fuel pressure sensor
+    sensorValue = rawSensorValue - garminOffset;  // Remove the 0.5V offset
+    if (sensorValue <= 0) sensorValue = 0;        // No negative Fuel Pressure
   
-  // map it to the range of the analog out:
-  outputValue = map(sensorValue, 0, 818, 0, 255);  // 
-  if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
-  analogWrite(analogOutPin, outputValue);          // Set the analog out value:
+    outputValue = map(sensorValue, 0, 818, 0, 255);  // 
+    if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
+    analogWrite(analogOutPin, outputValue);          // Set the analog out value:
+  }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
 // +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
@@ -179,11 +199,5 @@ void loop() {
 
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
 */
-
-  // wait 2 milliseconds before the next loop
-  // for the analog-to-digital converter to settle
-  // after the last reading:
-
-  //delay(2);
 
 }
