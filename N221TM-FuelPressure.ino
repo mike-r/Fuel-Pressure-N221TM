@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.2 **********
+ *          **********  Version 2.4 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -31,6 +31,9 @@
  modified May 2016 by Mike Rehberg:     Added NMEA string code to read from G-496 at 9600 into the HW
                                         serial port and write out only NMEA code at 4800 to the Autopilot
                                         
+ May 11 2016 by Mike Rehberg:           Major Fixes
+
+ 
  */
 
 // These constants won't change.  They're used to give names
@@ -112,7 +115,7 @@ void loop() {
       g496String += incomingByte;            // Move character into next open space in string
     }
     else {
-      if (g496String.substring(1, 6) == "GPRMB") {     // Check to see if this is a NMEA string
+      if (g496String.substring(1, 6) == "GPRMB") {
         if (countB == 2) {
           ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
           countB = 0;
