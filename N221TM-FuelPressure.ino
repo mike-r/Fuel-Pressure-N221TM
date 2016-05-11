@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.2 **********
+ *          **********  Version 2.3 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -29,8 +29,12 @@
                                         TTL to RS-232 level shifter to interface with the Arduino.
                                         
  modified May 2016 by Mike Rehberg:     Added NMEA string code to read from G-496 at 9600 into the HW
-                                        serial port and write out only NMEA code at 4800 to the Autopilot
-                                        
+                                        serial port and write out only NMEA code at 4800 to the Autopilot.
+                                        Works fine in "Heading" mode ($GPRMC) but not at all in "Intercept"
+                                        or "Cource" mode ($GPRMB).
+
+                                        $GPRMB message not getting through.
+                                                                               
  */
 
 // These constants won't change.  They're used to give names
@@ -46,7 +50,12 @@ float resolution=206.25;    // Input steps per Volt  1023/4.96
 float scaleFactor=17.0;     // Output steps per PSIG: 255/15
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
 char  incomingByte;         // BAUD conversion buffer
-String g496String ="";      // String read in from G496
+String g496String ="                                        "; // String read in from G496
+boolean line0 = true;       // Keep track which line of the LCD display we are on
+
+unsigned long currentMillis  = 0;     // How long the Arduino has been running (will loop in 50 days)
+unsigned long previousMillis = 0;     // will store last time the Fuel Pressure was updated
+const long interval = 5;              // Interval at which to read & write Fuel Pressure (milliseconds)
 
 
 #define rxPinLCD 2    //  rxPinLCD is immaterial - not used - just make this an unused Arduino pin number
@@ -105,29 +114,39 @@ void loop() {
     incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
     if (incomingByte != '\n') {              // Look for NewLine terminator
       if (incomingByte == '$') {             // Begining of NMEA string
-        g496String = "";                     // Clear string buffer
+        g496String ="";                      // Clear string buffer
       }
       g496String += incomingByte;            // Move character into next open space in string
     }
-    else {
-      if (g496String.charAt(1) =='G') {     // Check to see if this is a NMEA string
+    else {                                  // Full message in string buffer
+      if (g496String.substring(0, 2) == "$GP") {     // Check to see if this is a NMEA string
         ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
-        lcdSerial.print("?x00?y0");         // cursor to first character of line 0
-        lcdSerial.print(g496String);        // write string to the LCD
+        if (line0) {
+          lcdSerial.print("?x00?y0");         // cursor to first character of line 0
+          lcdSerial.print(g496String);        // write string to the LCD
+          line0 = false;                      // Prepare to write the next string on the next line
+        }
+        else {
+          lcdSerial.print("?x00?y2");         // cursor to first character of line 0
+          lcdSerial.print(g496String);        // write string to the LCD
+          line0 = true;    
+        }
       }
-      g496String = "";
+      g496String = "";                        // Clear string buffer
     }
   }
 
-  // read the analog fuel pressure in value:
-  rawSensorValue = analogRead(analogInPin);
-  sensorValue = rawSensorValue - garminOffset;  // Remove the 0.5V offset
-  if (sensorValue <= 0) sensorValue = 0;        // No negative Fuel Pressure
-  
-  // map it to the range of the analog out:
-  outputValue = map(sensorValue, 0, 818, 0, 255);  // 
-  if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
-  analogWrite(analogOutPin, outputValue);          // Set the analog out value:
+  currentMillis = millis();                          // How long has it been since booted?
+  if (currentMillis - previousMillis <= interval) {  // Time to read & write the FuelPressure
+    previousMillis = currentMillis;                  // Reset the timer
+    
+    rawSensorValue = analogRead(analogInPin);        // read the analog fuel pressure in value
+    sensorValue = rawSensorValue - garminOffset;     // Remove the 0.5V offset
+    if (sensorValue <= 0) sensorValue = 0;           // No negative Fuel Pressure
+    outputValue = map(sensorValue, 0, 818, 0, 255);  // map it to the range of the analog out
+    if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
+    analogWrite(analogOutPin, outputValue);          // Set the analog out value
+  }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
 // +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
@@ -170,6 +189,6 @@ void loop() {
   // for the analog-to-digital converter to settle
   // after the last reading:
 
-  delay(2);
+// Try to speed things up://  delay(2);
 
 }
