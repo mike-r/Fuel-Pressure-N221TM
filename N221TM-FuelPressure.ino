@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.32 **********
+ *          **********  Version 2.33 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -45,6 +45,9 @@
                                         RMB message is imediatly after RMC message.
                                         Added timer for Analog read of Fuel Pressure and set
                                         for 0.925 seconds.
+
+ V 2.33 May 11, 2016 by Mike Rehberg:   Will print $GPRMB messages at top of LCD, other $GP messages
+                                        on the bottom.
                                                                                
    Things to add:
                                         + HW switch and code to toggle LCD deboug code.
@@ -132,18 +135,16 @@ void loop() {
       }
       g496String += incomingByte;            // Move character into next open space in string
     }
-    else {                                  // Full message in string buffer
-      if (g496String.substring(0, 2) == "$GP") {     // Check to see if this is a NMEA string
-        ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
-        if (line0) {
+    else {                                    // Full message in string buffer
+      if (g496String.substring(0, 2) == "$GP") {     // Check to see if this is a NMEA GPS string
+        ap1Serial.println(g496String);        // Write NMEA string to the AutoPilot at 4800
+        if (g496String.substring(3, 5) == "RMB") {   // $GPRMB NMEA message send to top of LCD
           lcdSerial.print("?x00?y0");         // cursor to first character of line 0
           lcdSerial.print(g496String);        // write string to the LCD
-          line0 = false;                      // Prepare to write the next string on the next line
         }
-        else {
-          lcdSerial.print("?x00?y2");         // cursor to first character of line 0
+        else {                                // Probably a $GPRMC NMEA message, send to bottom of LCD
+          lcdSerial.print("?x00?y2");         // cursor to first character of line 2
           lcdSerial.print(g496String);        // write string to the LCD
-          line0 = true;    
         }
       }
       g496String = "";                        // Clear string buffer
@@ -198,11 +199,5 @@ void loop() {
 
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
 */
-
-  // wait 2 milliseconds before the next loop
-  // for the analog-to-digital converter to settle
-  // after the last reading:
-
-// Try to speed things up://  delay(2);
 
 }
