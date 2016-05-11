@@ -110,7 +110,7 @@ void loop() {
       g496String += incomingByte;            // Move character into next open space in string
     }
     else {
-      if (g496String.charAt(1) =='G') {     // Check to see if this is a NMEA string
+      if (g496String.charAt(5) =='B') {     // Check to see if this is a NMEA string
         ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
         lcdSerial.print("?x00?y0");         // cursor to first character of line 0
         lcdSerial.print(g496String);        // write string to the LCD
@@ -170,6 +170,6 @@ void loop() {
   // for the analog-to-digital converter to settle
   // after the last reading:
 
-  delay(2);
+  //delay(2);
 
 }
