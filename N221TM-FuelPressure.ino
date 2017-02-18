@@ -2,7 +2,7 @@
 
 /*
  * 
- *          **********  Version 2.5 **********
+ *          **********  Version 2.6 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
@@ -12,6 +12,8 @@
    Garmin Fuel Pressure sensor connected to analog pin 0.
    Sensor ouputs 0.5 volts at 0.0 PSIG and 4.5 volts at 15.0 PSIG.
    Output is divided using 2K fixed resistor and a 200K 20-turn pot.
+   eTape Smoke Oil Tank Level sensor connected to analog pin 1.
+   
  
  created 29 Dec. 2008
  modified 9 Apr 2012 by Tom Igoe
@@ -45,6 +47,9 @@
                                         The VM1000 is slow anyway so no need to waste Arduino cycles.  Currently
                                         set to update once every 2.925 seconds.
 
+ V 2.6  Feb 18, 2017 by Mike Rehberg:   Added Smoke oil tank level sensor to Analog Input pin A2.
+ 
+
  Things to add:                         + Hardware switch and code to enable debug to LCD display
  
  */
@@ -53,13 +58,18 @@
 // to the pins used:
 // Note Pin-0 is hardware RX and Pin-1 is hardware TX.  The RX Pin-0 will be connected to the G496 TX
 
-const int analogInPin = A0;  // Analog input pin that the Fuel Sensor is attached to
-const int analogOutPin = 3;  // Analog output pin that is voltage divided before going to
-float psig;                  // The VM-1000
+const int analogInPin = A0;   // Analog input pin that the Fuel Sensor is attached to
+const int analogInSmoke = A2; // Analog input pin for Smoke Oil Tank level sensor
+const int analogOutPin = 3;   // Analog output pin that is voltage divided before going to
+float psig;                   // The VM-1000
 float inputVoltage;
 float temp;
 float resolution=206.25;    // Input steps per Volt  1023/4.96
 float scaleFactor=17.0;     // Output steps per PSIG: 255/15
+float smokeLevel;
+float smokeResolution = 204.6;      // Input steps per Volt 1023 / 5.00
+float smokeScaleFactor = 0.91667;   // Volts per Gallon (.4167V/in, 4.583V=Full, .9167V/Gallon)
+float smokeVolts;
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
 char  incomingByte;         // BAUD conversion buffer
 String g496String ="                                      ";      // String read in from G496
@@ -67,7 +77,7 @@ int    countB =0;
 int    countC =0;
 unsigned long currentMillis =  0;   // How long the Arduino has been running (will loo in 50 days)
 unsigned long previousMillis = 0;   // The last time the Fuel Pressure was updated
-int           interval = 2925;      // Loop time for reading and writing the Fuel Pressure 
+int           interval = 2925;      // Loop time for reading and writing the Fuel Pressure and reading Smoke Level 
 
 #define rxPinLCD 2    //  rxPinLCD is immaterial - not used - just make this an unused Arduino pin number
 #define txPinLCD 15   //  txpinLCD for Serial 4x20 LCD Display using Analog(1)
@@ -79,7 +89,7 @@ int           interval = 2925;      // Loop time for reading and writing the Fue
 SoftwareSerial lcdSerial  =  SoftwareSerial(rxPinLCD, txPinLCD);
 SoftwareSerial ap1Serial  =  SoftwareSerial(rxPinAP1, txPinAP1);
 
-int rawSensorValue = 0;     // value read from the Garmin Sensor
+int rawSensorValue = 0;     // value read from the Sensor
 int sensorValue;
 int outputValue = 0;        // value output to the PWM (analog out)
 
@@ -161,11 +171,16 @@ void loop() {
     outputValue = map(sensorValue, 0, 818, 0, 255);  // 
     if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
     analogWrite(analogOutPin, outputValue);          // Set the analog out value:
+
+    // Now read the Smoke Oil Tank Level
+     rawSensorValue = analogRead(analogInSmoke);      // Read voltage for level 0-5VDC
+     smokeVolts = rawSensorValue / smokeResolution;
+     smokeLevel = smokeVolts * smokeScaleFactor;      // Level in Gallons
   }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
 // +++++++++++++ BEGINING OF DEBUG CODE ++++++++++++++++++++++++++++++++++++
-/*
+//  /*
   temp = outputValue;        // prepare for float math
   psig = temp/scaleFactor;   // Convert to PSIG
   temp = rawSensorValue;     // prepare for float math
@@ -184,6 +199,11 @@ void loop() {
   Serial.print("\t Fuel Presure = ");
   Serial.print(psig);
   Serial.println(" PSIG");
+  Serial.print("\t Smoke Volts = ");
+  Serial.print(smokeVolts);
+  Serial.print("Smoke Gallons = ");
+  Serial.println(smokeLevel);
+  Serial.println();
   
   // print the results to the LCD display:
   lcdSerial.print("?x00?y2");   // cursor to first character of line 2
@@ -195,9 +215,9 @@ void loop() {
   lcdSerial.print("?x15?y3");   // cursor to 15th character of line 3
   lcdSerial.print(inputVoltage, 2);
   
-  delay(2000); // Wait 2 seconds.  Going faster dosn't matter to the VM1000.
+  delay(2000); // Wait 2 seconds while in debug.
 
 // +++++++++++++++++++++++++ END OF DEBUG CODE +++++++++++++++++++++++++
-*/
+//   */
 
 }
