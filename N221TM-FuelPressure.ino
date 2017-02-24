@@ -2,23 +2,33 @@
 
 /*
  * 
+ *                      N221TM Arduino
+ * 
  *          **********  Version 2.6 **********
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
  Also prints the results to the serial monitor.
 
- The circuit:
+ The first circuit:
    Garmin Fuel Pressure sensor connected to analog pin 0.
    Sensor ouputs 0.5 volts at 0.0 PSIG and 4.5 volts at 15.0 PSIG.
    Output is divided using 2K fixed resistor and a 200K 20-turn pot.
+
+ The second circuit:
+   9600 BAUD serial data from Garmin GPSMAP-496 is read into HW serial port,
+   parsed and simple GPS message is sent at 4800 BAUD to the Trio AP-1 autopilot.
+   
+ The third circuit:
    eTape Smoke Oil Tank Level sensor connected to analog pin 1.
+
+
    
  
- created 29 Dec. 2008
+ Original AI and maping created 29 Dec. 2008
  modified 9 Apr 2012 by Tom Igoe
- modified Januauary 2016 by Mike Rehberg: For N221TM Fuel Pressure transducer ouputs 0.5Vdc to 4.5Vdc
-                                        while VM1000 is expecting 0 to 50mv.
+ Addapted Jan 2016 by Mike Rehberg for N221TM Fuel Pressure transducer 
+                                        ouputs 0.5Vdc to 4.5Vdc while VM1000 is expecting 0 to 50mv.
                                         
  V2.0 March 2016 by Mike Rehberg:       Added Serial BAUD rate converter.  Garmin G496 outputs NMEA
                                         and Garmin COM data at 9600 BAUD.  Trio AP-1 autopilot can
@@ -47,7 +57,10 @@
                                         The VM1000 is slow anyway so no need to waste Arduino cycles.  Currently
                                         set to update once every 2.925 seconds.
 
- V 2.6  Feb 18, 2017 by Mike Rehberg:   Added Smoke oil tank level sensor to Analog Input pin A2.
+ V 2.6  Feb 24, 2017 by Mike Rehberg:   Added Smoke oil tank level sensor to Analog Input pin A2.
+                                        Level is read by eTape sensor which outputs 0-5 volts based on 
+                                        0 to 12" of level in tank.
+                                        *****  NEEDS TO BE TESTED AND CALIBRATED *******
  
 
  Things to add:                         + Hardware switch and code to enable debug to LCD display
@@ -58,10 +71,10 @@
 // to the pins used:
 // Note Pin-0 is hardware RX and Pin-1 is hardware TX.  The RX Pin-0 will be connected to the G496 TX
 
-const int analogInPin = A0;   // Analog input pin that the Fuel Sensor is attached to
-const int analogInSmoke = A2; // Analog input pin for Smoke Oil Tank level sensor
-const int analogOutPin = 3;   // Analog output pin that is voltage divided before going to
-float psig;                   // The VM-1000
+const int analogInFuel   = A0; // Analog input pin that the Fuel Sensor is attached to
+const int analogInSmoke  = A2; // Analog input pin for Smoke Oil Tank level sensor
+const int analogOutFuel  = 3;  // Analog output pin that is voltage divided before going to
+float psig;                    // The VM-1000
 float inputVoltage;
 float temp;
 float resolution=206.25;    // Input steps per Volt  1023/4.96
@@ -70,6 +83,7 @@ float smokeLevel;
 float smokeResolution = 204.6;      // Input steps per Volt 1023 / 5.00
 float smokeScaleFactor = 0.91667;   // Volts per Gallon (.4167V/in, 4.583V=Full, .9167V/Gallon)
 float smokeVolts;
+float smokeWeight;          // How much somke juice onboard in lbs.
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
 char  incomingByte;         // BAUD conversion buffer
 String g496String ="                                      ";      // String read in from G496
@@ -94,7 +108,7 @@ int sensorValue;
 int outputValue = 0;        // value output to the PWM (analog out)
 
 void setup() {
-  pinMode(analogOutPin, OUTPUT);
+  pinMode(analogOutFuel, OUTPUT);
 
     
   // initialize serial communications at 9600 bps:
@@ -107,6 +121,7 @@ void setup() {
   ap1Serial.begin(4800);      // 4800 baud is chip comm speed
   
   lcdSerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
+//  lcdSerial.print("?G216");   // set display geometry, 2 x 16 characters in this case
   delay(500);                // pause to allow LCD EEPROM to program
   lcdSerial.print("?Bff");    // set backlight to ff hex, maximum brightness
   delay(1000);               // pause to allow LCD EEPROM to program
@@ -164,18 +179,19 @@ void loop() {
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;               // Reset the timer
-    rawSensorValue = analogRead(analogInPin);     // Read voltage from Garmin fuel pressure sensor
+    rawSensorValue = analogRead(analogInFuel);    // Read voltage from Garmin fuel pressure sensor
     sensorValue = rawSensorValue - garminOffset;  // Remove the 0.5V offset
     if (sensorValue <= 0) sensorValue = 0;        // No negative Fuel Pressure
   
     outputValue = map(sensorValue, 0, 818, 0, 255);  // 
     if (outputValue >= 255) outputValue = 255;       // Set max at full scale or else it wraps
-    analogWrite(analogOutPin, outputValue);          // Set the analog out value:
+    analogWrite(analogOutFuel, outputValue);         // Set the analog out value:
 
     // Now read the Smoke Oil Tank Level
      rawSensorValue = analogRead(analogInSmoke);      // Read voltage for level 0-5VDC
      smokeVolts = rawSensorValue / smokeResolution;
      smokeLevel = smokeVolts * smokeScaleFactor;      // Level in Gallons
+     smokeWeight = smokeLevel * 8.0;                  // Pounds of smoke oil onboard
   }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
