@@ -219,6 +219,8 @@ void loop() {
   Serial.print(smokeVolts);
   Serial.print("Smoke Gallons = ");
   Serial.println(smokeLevel);
+  Serial.print("Smoke Weight = ");
+  Serial.println(smokeWeight);
   Serial.println();
   
   // print the results to the LCD display:
