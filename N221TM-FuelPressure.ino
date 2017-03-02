@@ -59,7 +59,7 @@
 
  V 2.6  Feb 24, 2017 by Mike Rehberg:   Added Smoke oil tank level sensor to Analog Input pin A2.
                                         Level is read by eTape sensor which outputs 0-5 volts based on 
-                                        0 to 12" of level in tank.
+                                        0 to 12" of level in tank.  (0.404 Volts/Inch
                                         *****  NEEDS TO BE TESTED AND CALIBRATED *******
  
 
@@ -72,21 +72,22 @@
 // Note Pin-0 is hardware RX and Pin-1 is hardware TX.  The RX Pin-0 will be connected to the G496 TX
 
 const int analogInFuel   = A0; // Analog input pin that the Fuel Sensor is attached to
+//                         A1  // Analog input pin used for LCD Serial Display output
 const int analogInSmoke  = A2; // Analog input pin for Smoke Oil Tank level sensor
 const int analogOutFuel  = 3;  // Analog output pin that is voltage divided before going to
 float psig;                    // The VM-1000
 float inputVoltage;
 float temp;
-float resolution=206.25;    // Input steps per Volt  1023/4.96
-float scaleFactor=17.0;     // Output steps per PSIG: 255/15
-float smokeLevel;
-float smokeResolution = 204.6;      // Input steps per Volt 1023 / 5.00
-float smokeScaleFactor = 0.91667;   // Volts per Gallon (.4167V/in, 4.583V=Full, .9167V/Gallon)
+float resolution=210.928;   // Fuel Pressure Input steps per Volt  1023/4.85
+float scaleFactor=17.0;     // Fuel Pressure Output steps per PSIG: 255/15
+float smokeGallons;
+float smokeResolution = 210.928;   // Smoke Level Input steps per Volt 1023 / 4.85  (9" = Full = 5 Gallons)
+float smokeScaleFactor = 1.375;    // Smoke Level Gallons per Volt (.404V/in, 3.6375V=Full, .7275V/Gallon)
 float smokeVolts;
 float smokeWeight;          // How much somke juice onboard in lbs.
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
 char  incomingByte;         // BAUD conversion buffer
-String g496String ="                                      ";      // String read in from G496
+String g496String ="                                      ";      // String read buffer in from G496
 int    countB =0;
 int    countC =0;
 unsigned long currentMillis =  0;   // How long the Arduino has been running (will loo in 50 days)
@@ -132,14 +133,14 @@ void setup() {
   lcdSerial.print("?f");      // clear the LCD
   delay(1000);
   lcdSerial.print("?x00?y0");   // cursor to first character of line 0
-  lcdSerial.println("   N221TM   v 2.5   ");
+  lcdSerial.println("   N221TM   V 2.6   ");
   lcdSerial.print("?x00?y1");   // cursor to first character of line 1
-  lcdSerial.println(" BareBones  Arduino  ");
+  lcdSerial.println(" BareBones  Arduino ");
   lcdSerial.print("?x00?y2");   // cursor to first character of line 2
-  lcdSerial.println(" Fuel Pressure and  ");
+  lcdSerial.println("Fuel Pressure, and  ");
   lcdSerial.print("?x00?y3");   // cursor to first character of line 3
-  lcdSerial.println(" G496 to A/P Buffer ");
-  delay(2000);                 // Wait to read it.
+  lcdSerial.println("Pounds of Smoke Oil ");
+  delay(10000);                 // Wait 10 seconds to read it.
   lcdSerial.print("?f");       // clear the LCD
   delay(1000);
 }
@@ -189,9 +190,9 @@ void loop() {
 
     // Now read the Smoke Oil Tank Level
      rawSensorValue = analogRead(analogInSmoke);      // Read voltage for level 0-5VDC
-     smokeVolts = rawSensorValue / smokeResolution;
-     smokeLevel = smokeVolts * smokeScaleFactor;      // Level in Gallons
-     smokeWeight = smokeLevel * 8.0;                  // Pounds of smoke oil onboard
+     smokeVolts = rawSensorValue / smokeResolution;   // steps / steps per volt
+     smokeGallons = smokeVolts * smokeScaleFactor;    // Level in Gallons
+     smokeWeight = smokeGallons * 8.0;                // Pounds of smoke oil onboard
   }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
@@ -218,19 +219,27 @@ void loop() {
   Serial.print("\t Smoke Volts = ");
   Serial.print(smokeVolts);
   Serial.print("Smoke Gallons = ");
-  Serial.println(smokeLevel);
+  Serial.println(smokeGallons);
   Serial.print("Smoke Weight = ");
   Serial.println(smokeWeight);
   Serial.println();
   
   // print the results to the LCD display:
+  lcdSerial.print("?x00?y0");   // cursor to first character of line 0
+  lcdSerial.println("Tank Voltage:       "); 
+  lcdSerial.print("?x16?y0");   // cursor to 16th character of line 0
+  lcdSerial.print(smokeVolts, 2);
+  lcdSerial.print("?x00?y1");   // cursor to first character of line 1
+  lcdSerial.println("Pounds of Oil:       "); 
+  lcdSerial.print("?x15?y1");   // cursor to 15th character of line 1
+  lcdSerial.print(smokeWeight, 2);
   lcdSerial.print("?x00?y2");   // cursor to first character of line 2
   lcdSerial.println("Fuel Pressure:      "); 
-  lcdSerial.print("?x15?y2");   // cursor to 15th character of line 2
+  lcdSerial.print("?x16?y2");   // cursor to 16th character of line 2
   lcdSerial.print(psig, 1);
   lcdSerial.print("?x00?y3");   // cursor to first character of line 3
-  lcdSerial.println("Voltage In:      "); 
-  lcdSerial.print("?x15?y3");   // cursor to 15th character of line 3
+  lcdSerial.println("Voltage In:         "); 
+  lcdSerial.print("?x16?y3");   // cursor to 16th character of line 3
   lcdSerial.print(inputVoltage, 2);
   
   delay(2000); // Wait 2 seconds while in debug.
