@@ -5,53 +5,29 @@
  *                      N873PW Arduino
  * 
  *          **********  Version 3.0 **********
+ *          **** From N221TM Version 2.6 *****
  *          
  Reads an analog input pin, maps the result to a range from 0 to 255
  and uses the result to set the pulsewidth modulation (PWM) of an output pin.
  Also prints the results to the serial monitor.
 
- The first circuit:
+Fuel Pressure circuit:
    Garmin Fuel Pressure sensor connected to analog pin 0.
    Sensor ouputs 0.5 volts at 0.0 PSIG and 4.5 volts at 15.0 PSIG.
    Output is divided using 2K fixed resistor and a 200K 20-turn pot.
-
- The second circuit:
-   9600 BAUD serial data from Garmin GPSMAP-496 is read into HW serial port,
-   parsed and simple GPS message is sent at 4800 BAUD to the Trio AP-1 autopilot.
-   
- The third circuit:
-   eTape Smoke Oil Tank Level sensor connected to analog pin 1.
+  
+Smoke Tank Level circuit:
+   eTape Smoke Oil Tank Level sensor connected to analog pin A2.
 
 
    
  
  Original AI and maping created 29 Dec. 2008
  modified 9 Apr 2012 by Tom Igoe
- Addapted Jan 2016 by Mike Rehberg for N221TM Fuel Pressure transducer 
+ Addapted Jan 2016 by Mike Rehberg for N221TM Fuel Pressure transducer
+ Moved to N873PW in 2021 by Mike Rehberg 
                                         ouputs 0.5Vdc to 4.5Vdc while VM1000 is expecting 0 to 50mv.
                                         
- V2.0 March 2016 by Mike Rehberg:       Added Serial BAUD rate converter.  Garmin G496 outputs NMEA
-                                        and Garmin COM data at 9600 BAUD.  Trio AP-1 autopilot can
-                                        only read NMEA-0183 data at 4800 BAUD.
-
-                                        Moved 9600 receive port to hardware serial port (D0).  It dropped
-                                        bytes on the Software Serial port.
-
-                                        Note that these are RS-232 level signels and as such need a
-                                        TTL to RS-232 level shifter to interface with the Arduino.
-                                        
- V2.2 May 9, 2016 by Mike Rehberg:      Added NMEA string code to read from G-496 at 9600 into the HW
-                                        serial port and write out only NMEA code at 4800 to the Autopilot.
-                                        Moed Serial output to A/P from Analog-2 to Digital-4 to match HW in plane.
-                                        removed SoftwareSerial code for reading from G496.  HW reciever should
-                                        be better about not dropping characters
-                                        
-   $GPRMB,A,0.66,R,KIKW,MTW,4407.71,N,08740.80,W,150.834,282.1,,V,D*2C
-   $GPRMC,211512,A,4339.15,N,08415.97,W,0.0,9.0,110516,6.8,W,D*10
-                                        
- V 2.5 May 11 2016 by Mike Rehberg:     Reading G496 message stream at 9600 and only sending NMEA
-                                        $GPRMB and $GPRMC messeges to autopilot at 4800.  
-                                        will only send one message out of 2 or 3 which is about 1 per two sec.
 
                                         Added a timer on the analog read/write of the fuel pressure sensor.
                                         The VM1000 is slow anyway so no need to waste Arduino cycles.  Currently
@@ -69,7 +45,6 @@
 
 // These constants won't change.  They're used to give names
 // to the pins used:
-// Note Pin-0 is hardware RX and Pin-1 is hardware TX.  The RX Pin-0 will be connected to the G496 TX
 
 const int analogInFuel   = A0; // Analog input pin that the Fuel Sensor is attached to
 //                         A1  // Analog input pin used for LCD Serial Display output
@@ -86,10 +61,6 @@ float smokeScaleFactor = 1.375;    // Smoke Level Gallons per Volt (.404V/in, 3.
 float smokeVolts;
 float smokeWeight;          // How much somke juice onboard in lbs.
 int   garminOffset=102;     // Steps for 0.5 VDC offset to 0.0 PSIG
-char  incomingByte;         // BAUD conversion buffer
-String g496String ="                                      ";      // String read buffer in from G496
-int    countB =0;
-int    countC =0;
 unsigned long currentMillis =  0;   // How long the Arduino has been running (will loo in 50 days)
 unsigned long previousMillis = 0;   // The last time the Fuel Pressure was updated
 int           interval = 2925;      // Loop time for reading and writing the Fuel Pressure and reading Smoke Level 
@@ -111,15 +82,8 @@ int outputValue = 0;        // value output to the PWM (analog out)
 void setup() {
   pinMode(analogOutFuel, OUTPUT);
 
-    
-  // initialize serial communications at 9600 bps:
-  Serial.begin(9600);        // Harware Serail port to read NMEA and COM data from G-496
-
   pinMode(txPinLCD, OUTPUT); // Serial output to 4/20 character LCD display
   lcdSerial.begin(9600);      // 9600 baud is chip comm speed
-
-  pinMode(txPinAP1, OUTPUT);  // Serial output to NavAid AP-1 Autopilot
-  ap1Serial.begin(4800);      // 4800 baud is chip comm speed
   
   lcdSerial.print("?G420");   // set display geometry,  4 x 20 characters in this case
 //  lcdSerial.print("?G216");   // set display geometry, 2 x 16 characters in this case
@@ -133,7 +97,7 @@ void setup() {
   lcdSerial.print("?f");      // clear the LCD
   delay(1000);
   lcdSerial.print("?x00?y0");   // cursor to first character of line 0
-  lcdSerial.println("   N221TM   V 2.6   ");
+  lcdSerial.println("   N873PW   V 3.0   ");
   lcdSerial.print("?x00?y1");   // cursor to first character of line 1
   lcdSerial.println(" BareBones  Arduino ");
   lcdSerial.print("?x00?y2");   // cursor to first character of line 2
@@ -146,33 +110,6 @@ void setup() {
 }
 
 void loop() {
-
-  if(Serial.available() > 0) {               // Read GPS data at 9600 BAUD into the Hardware Serial Port
-    incomingByte = Serial.read();            // Move byte to temp storage to be ready to write to A/P
-    if (incomingByte != '\n') {              // Look for NewLine terminator
-      if (incomingByte == '$') {             // Begining of NMEA string
-        g496String = "";                     // Clear string buffer
-      }
-      g496String += incomingByte;            // Move character into next open space in string
-    }
-    else {
-      if (g496String.substring(1, 6) == "GPRMB") {
-        if (countB == 2) {
-          ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
-          countB = 0;
-        }
-        else countB = countB + 1;
-      }
-      else if (g496String.substring(1, 6) == "GPRMC") {
-        if (countC == 2) {
-          ap1Serial.println(g496String);      // Write NMEA string to the AutoPilot at 4800
-          countC = 0;
-        }
-        else countC = countC +1;       
-      }
-      g496String = "";
-    }
-  }
 
   // read the analog fuel pressure in value:
 
@@ -192,7 +129,7 @@ void loop() {
      rawSensorValue = analogRead(analogInSmoke);      // Read voltage for level 0-5VDC
      smokeVolts = rawSensorValue / smokeResolution;   // steps / steps per volt
      smokeGallons = smokeVolts * smokeScaleFactor;    // Level in Gallons
-     smokeWeight = smokeGallons * 8.0;                // Pounds of smoke oil onboard
+     smokeWeight = smokeGallons * 7.1;                // Pounds of smoke oil onboard
   }
 
 // Uncomment this last block to enable Fuel Pressure debug messaged to the LCD and monitor.
